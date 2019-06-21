@@ -32,15 +32,15 @@ class XelaSensor:
         id_list   = [0] * taxel_num
         data_list = [0] * taxel_num
         success = False
-        for i in range(0,taxel_num):
+        for i in range(0,taxel_num*2):
           recvmsg = self._bus.recv()
-          if recvmsg.arbitration_id >= 1808:
+          if (recvmsg.arbitration_id >= 256) and (recvmsg.arbitration_id < 256+16): #1808:
             # [Note] For the moment this code is tested with only one board.
             # [Todo] This magic number must be changed when multiple boards are connected at the same time.
-            id_list[recvmsg.arbitration_id - 1808] = recvmsg.arbitration_id
+            id_list[recvmsg.arbitration_id - 256] = recvmsg.arbitration_id
             if recvmsg.data[1] < 256: # Changed this number from 250 to 256 to make the sensor run
               success = True
-              data_list[recvmsg.arbitration_id - 1808] = recvmsg.data
+              data_list[recvmsg.arbitration_id - 256] = recvmsg.data
             else:
               success = False
               break
