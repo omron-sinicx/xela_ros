@@ -9,8 +9,8 @@ import rospy
 import rospkg
 rospack = rospkg.RosPack()
 import actionlib
-from o2as_xela_sensor.msg import *
-import o2as_xela_sensor.srv
+from xela_ros.msg import *
+import xela_ros.srv
 
 taxel_rows = 4
 taxel_cols = 4
@@ -25,9 +25,9 @@ class XelaSensorClient(object):
     self._pub = rospy.Publisher("sensor_xela", sensor, queue_size=10)
 
   def calibrate(self, sample_num, log_filename):
-    calibrate_action_client = actionlib.SimpleActionClient('calibrate', o2as_xela_sensor.msg.CalibrateAction)
+    calibrate_action_client = actionlib.SimpleActionClient('calibrate', xela_ros.msg.CalibrateAction)
     calibrate_action_client.wait_for_server()
-    goal = o2as_xela_sensor.msg.CalibrateGoal()
+    goal = xela_ros.msg.CalibrateGoal()
     goal.sample_num = sample_num
     goal.log_filename = log_filename
     calibrate_action_client.send_goal(goal)
@@ -52,7 +52,7 @@ class XelaSensorDemo(XelaSensorClient):
     super(XelaSensorDemo, self).__init__()
 
     # Run calibration and get baseline of the sensor (if necessary)
-    data_dir = os.path.join(rospack.get_path("o2as_xela_sensor"), "data")
+    data_dir = os.path.join(rospack.get_path("xela_ros"), "data")
     self.calibrate(sample_num=100, log_filename=os.path.join(data_dir, "calibration_log.csv"))
 
     # Constants

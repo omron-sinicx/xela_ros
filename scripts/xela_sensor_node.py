@@ -6,9 +6,9 @@ import rospkg
 rospack = rospkg.RosPack()
 
 import actionlib
-from o2as_xela_sensor.msg import *
-from o2as_xela_sensor.srv import *
-from o2as_xela_sensor.xela_sensor import *
+from xela_ros.msg import *
+from xela_ros.srv import *
+from xela_ros.xela_sensor import *
 
 class XelaSensorClient(object):
   def __init__(self):
@@ -18,9 +18,9 @@ class XelaSensorClient(object):
     self._sub_base = rospy.Subscriber("base", XelaSensorStamped, self.base_callback)
 
   def calibrate(self, sample_num, log_filename):
-    calibrate_action_client = actionlib.SimpleActionClient('calibrate', o2as_xela_sensor.msg.CalibrateAction)
+    calibrate_action_client = actionlib.SimpleActionClient('calibrate', xela_ros.msg.CalibrateAction)
     calibrate_action_client.wait_for_server()
-    goal = o2as_xela_sensor.msg.CalibrateGoal()
+    goal = xela_ros.msg.CalibrateGoal()
     goal.sample_num = sample_num
     goal.log_filename = log_filename
     calibrate_action_client.send_goal(goal)
@@ -48,7 +48,7 @@ class XelaSensorNode(XelaSensorClient):
     self._sensor.start_data_acquisition()
     
     # Calibrate once
-    data_dir = os.path.join(rospack.get_path("o2as_xela_sensor"), "data")
+    data_dir = os.path.join(rospack.get_path("xela_ros"), "data")
     filename = os.path.join(data_dir, "log{}.csv".format(board_id))
     self._sensor.calibrate(sample_num=100, filename=filename)
 

@@ -22,6 +22,7 @@ class XelaSensor:
     id = id_base|self._board_id # id of the first board is 0x201
     msg = can.Message(arbitration_id=id, data=[7,0], extended_id=False)
     try:
+      print("Starting")
       self._bus.send(msg)
     except can.CanError:
       print("Message NOT sent")
@@ -32,7 +33,7 @@ class XelaSensor:
         id_list   = [0] * taxel_num
         data_list = [0] * taxel_num
         success = False
-        for i in range(0,taxel_num*2):
+        for i in range(0,taxel_num):
           recvmsg = self._bus.recv()
           if (recvmsg.arbitration_id >= 256) and (recvmsg.arbitration_id < 256+16): #1808:
             # [Note] For the moment this code is tested with only one board.
