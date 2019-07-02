@@ -16,7 +16,21 @@ Forces = namedtuple('Forces', ('type', 'force', 'f_n', 'f_t', 'center_of_pressur
 Forces.__new__.__defaults__ = (None,) * (len(Forces._fields) - 2) # Defaults for all but type and force
 
 
-class SensorData(object):
+class SensorUnit(object):
+  """This class encapsulates everything required for a single sensor unit
+
+  Attributes:
+    _board_id (int) = The id number of the sensor board this sensor belongs to
+    _sensor_num (int) = The unique sensor number for this sensor
+    base_pub (obj) = The ROS publisher for the base (calibration reading)
+    data_pub (obj) = The ROS publisher for the raw data reading
+    cntr_pub (obj) = The ROS publisher for the centered (calibrated) reading
+    base (list) = The list containing the base (calibration) data
+    data (list) = The list containing the raw data
+    cntr (list) = The list containing the centered data
+
+  """
+
   def __init__(self, board_id, sensor_num, sensor_base):
     self._board_id = board_id
     self._sensor_num = sensor_num
@@ -81,7 +95,7 @@ class XelaSensorNode(object):
 
     # Sensor data objects
     self._board_id = board_id
-    self.sensors = [SensorData(board_id, sensor_num, self._sensor.base) for sensor_num in range(num_sensors)]
+    self.sensors = [SensorUnit(board_id, sensor_num, self._sensor.base) for sensor_num in range(num_sensors)]
 
     # Calibrate action (for re-calibration)
     self._calibrate_action_name = "~calibrate"
