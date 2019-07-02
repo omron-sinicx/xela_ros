@@ -4,15 +4,16 @@ import can
 import csv
 import numpy as np
 
-id_base = 0x200
-taxel_num = 16
+id_base     = 0x200
+taxel_num   = 16
+num_sensors = 2
 
 class XelaSensor:
   def __init__(self, board_id=1):
     self._board_id = board_id # board id is start from 1
     self._bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=1000000)
-    self._base = [0] * taxel_num*3
-    self._data = [0] * taxel_num*3
+    self._base = [0] * taxel_num*3 * num_sensors
+    self._data = [0] * taxel_num*3 * num_sensors
     
   def __del__(self):
     self._bus.shutdown()
@@ -22,7 +23,6 @@ class XelaSensor:
     id = id_base|self._board_id # id of the first board is 0x201
     msg = can.Message(arbitration_id=id, data=[7,0], extended_id=False)
     try:
-      print("Starting")
       self._bus.send(msg)
     except can.CanError:
       print("Message NOT sent")
@@ -30,14 +30,13 @@ class XelaSensor:
   def get_data(self, sensor_list=None):
     try:
       while True:
-        id_list   = [0] * taxel_num
-        data_list = [0] * taxel_num
+        id_list   = [0] * taxel_num * num_sensors
+        data_list = [0] * taxel_num * num_sensors
         success = False
-        for i in range(0,taxel_num):
+        for i in range(0,taxel_num * num_sensors):
           recvmsg = self._bus.recv()
-          if (recvmsg.arbitration_id >= 256) and (recvmsg.arbitration_id < 256+16): #1808:
-            # [Note] For the moment this code is tested with only one board.
-            # [Todo] This magic number must be changed when multiple boards are connected at the same time.
+          # Data is located between id 256 and 256+taxel_num*num_sensors
+          if (recvmsg.arbitration_id >= 256) and (recvmsg.arbitration_id < 256+taxel_num*num_sensors):
             id_list[recvmsg.arbitration_id - 256] = recvmsg.arbitration_id
             if recvmsg.data[1] < 256: # Changed this number from 250 to 256 to make the sensor run
               success = True
@@ -47,7 +46,7 @@ class XelaSensor:
               break
       
         if success:
-          for i in range(taxel_num):
+          for i in range(taxel_num * num_sensors):
             # Update if data is available
             if id_list[i] != 0:
               # Combine MSB | LSB
@@ -75,7 +74,7 @@ class XelaSensor:
                        'B2S1X','B2S1Y','B2S1Z','B2S2X','B2S2Y','B2S2Z','B2S3X','B2S3Y','B2S3Z','B2S4X','B2S4Y','B2S4Z',
                        'B3S1X','B3S1Y','B3S1Z','B3S2X','B3S2Y','B3S2Z','B3S3X','B3S3Y','B3S3Z','B3S4X','B3S4Y','B3S4Z',
                        'B4S1X','B4S1Y','B4S1Z','B4S2X','B4S2Y','B4S2Z','B4S3X','B4S3Y','B4S3Z','B4S4X','B4S4Y','B4S4Z'])
-      base = np.zeros([taxel_num*3])
+      base = np.zeros([taxel_num*3 * num_sensors])
       for k in range(sample_num):
         data = self.get_data()
         writer.writerow(data)

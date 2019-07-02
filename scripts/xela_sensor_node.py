@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import os
 import copy
+from collections import namedtuple
+
 import rospy
 import rospkg
 rospack = rospkg.RosPack()
@@ -10,38 +12,63 @@ from xela_ros.msg import *
 from xela_ros.srv import *
 from xela_ros.xela_sensor import *
 
-class XelaSensorClient(object):
-  def __init__(self):
-    self._base = [0] * taxel_num * 3
-    self._data = [0] * taxel_num * 3
-    self._sub_data = rospy.Subscriber("data", XelaSensorStamped, self.data_callback)
-    self._sub_base = rospy.Subscriber("base", XelaSensorStamped, self.base_callback)
+Forces = namedtuple('Forces', ('type', 'force', 'f_n', 'f_t', 'center_of_pressure'))
+Forces.__new__.__defaults__ = (None,) * (len(Forces._fields) - 2) # Defaults for all but type and force
 
-  def calibrate(self, sample_num, log_filename):
-    calibrate_action_client = actionlib.SimpleActionClient('calibrate', xela_ros.msg.CalibrateAction)
-    calibrate_action_client.wait_for_server()
-    goal = xela_ros.msg.CalibrateGoal()
-    goal.sample_num = sample_num
-    goal.log_filename = log_filename
-    calibrate_action_client.send_goal(goal)
-    calibrate_action_client.wait_for_result()
 
-  def data_callback(self, msg_in):
-    self._data = copy.deepcopy(msg_in.data)
+class SensorData(object):
+  def __init__(self, board_id, sensor_num, sensor_base):
+    self._board_id = board_id
+    self._sensor_num = sensor_num
+    self.base_pub = rospy.Publisher("~base_{}"    .format(self._sensor_num), XelaSensorStamped, queue_size=1)
+    self.data_pub = rospy.Publisher("~data_{}"    .format(self._sensor_num), XelaSensorStamped, queue_size=1)
+    self.cntr_pub = rospy.Publisher("~centered_{}".format(self._sensor_num), XelaSensorStamped, queue_size=1)
   
-  def base_callback(self, msg_in):
-    self._base = copy.deepcopy(msg_in.data)
+  def get_data_indices(self):
+    # Index this sensor out of the full sensor data
+    beg_index =  self._sensor_num    * taxel_num*3
+    end_index = (self._sensor_num+1) * taxel_num*3
+    return beg_index, end_index
 
-  @property
-  def data(self):
-    return self._data
+  def update(self, data, base):
+    beg_index, end_index = self.get_data_indices()
+    self.base = base[beg_index:end_index]
+    self.data = data[beg_index:end_index]
+    self.cntr = [d - b for d, b in zip(self.data, self.base)]
+
+  def calculate_forces(self, data):
+    # Coefficient for sensor -> Newton is 25, taxel area is 0.0047**2
+    force = np.array(data)
+    f_x, f_y, f_z = (force.reshape((taxel_num,3))[:,ax] for ax in range(3))
+    f_n=np.sum(f_z)
+    f_t=[np.sum(f_x), np.sum(f_y)]
+    center_of_pressure=[0,0]
+    forces   = Forces('data', force, f_n, f_t, center_of_pressure)
+    return forces
   
-  @property
-  def base(self):
-    return self._base
-class XelaSensorNode(XelaSensorClient):
+  def publish_reading(self, publisher, forces):
+    msg = XelaSensorStamped()
+    msg.board_id = self._board_id
+    msg.header.stamp = rospy.Time.now()
+    msg.data = forces.force
+    if forces.type == 'data':
+      msg.f_n = forces.f_n
+      msg.f_t = forces.f_t
+      msg.center_of_pressure = forces.center_of_pressure
+    publisher.publish(msg)
+
+  def publish(self):
+    data = self.calculate_forces(self.data)
+    cntr = self.calculate_forces(self.cntr)
+    base = Forces('base', self.base)
+
+    self.publish_reading(self.data_pub, data)
+    self.publish_reading(self.base_pub, base) 
+    self.publish_reading(self.cntr_pub, cntr) 
+
+
+class XelaSensorNode(object):
   def __init__(self):
-    super(XelaSensorNode, self).__init__()
     # Connect to the sensor and trigger to start acquisition
     board_id = rospy.get_param("board_id", 1)
     self._sensor = XelaSensor(board_id)
@@ -52,10 +79,9 @@ class XelaSensorNode(XelaSensorClient):
     filename = os.path.join(data_dir, "log{}.csv".format(board_id))
     self._sensor.calibrate(sample_num=100, filename=filename)
 
-    # Publishers
-    self._pub_base = rospy.Publisher("~base", XelaSensorStamped, queue_size=1)
-    self._pub_data = rospy.Publisher("~data", XelaSensorStamped, queue_size=1)
+    # Sensor data objects
     self._board_id = board_id
+    self.sensors = [SensorData(board_id, sensor_num, self._sensor.base) for sensor_num in range(num_sensors)]
 
     # Calibrate action (for re-calibration)
     self._calibrate_action_name = "~calibrate"
@@ -73,43 +99,21 @@ class XelaSensorNode(XelaSensorClient):
     self._calibrate_action_server.set_succeeded(self._calibrate_action_result)
     rospy.loginfo('Action server {} finished.'.format(self._calibrate_action_name))
 
+  def update_sensor_data(self):
+    # Get sensor data from sensor interface
+    all_sensor_data = self._sensor.get_data(sensor_list)
+    all_sensor_base = self._sensor.base
+    # Update each sensor object, they retrieve their own data from list
+    for sensor in self.sensors:
+      sensor.update(all_sensor_data, all_sensor_base)
+
   def free_run(self):
-    # Constants
-    scale_xy = 25  # Coefficient to convert from sensor data to Newton
-    scale_z = 25   # Coefficient to convert from sensor data to Newton
-    taxel_area = 0.0047*0.0047
-
     while not rospy.is_shutdown():
-      ## Calculate forces
-      force_diff = np.array(self._sensor.get_data(sensor_list)) - np.array(self.base)
-      f_x = force_diff.reshape((taxel_num,3))[:,0]
-      f_y = force_diff.reshape((taxel_num,3))[:,1]
-      f_z = force_diff.reshape((taxel_num,3))[:,2]
-
-      # is_under_pressure = (f_z > 18000)   # 16x1 boolean vector
-      # cop = [is_under_pressure*(f_z.*x_coord), is_under_pressure*(f_z.*y_coord)]
-      # for i in f_z:
-      #   if i>18000:
-      #     print (i)
-
-      # Publish base (is this necessary?)
-      base_msg = XelaSensorStamped()
-      base_msg.board_id = self._board_id
-      base_msg.header.stamp = rospy.Time.now()
-      base_msg.data = self._sensor.base
-      self._pub_base.publish(base_msg)
-
-      # Publish data
-      data_msg = XelaSensorStamped()
-      data_msg.board_id = self._board_id
-      data_msg.header.stamp = rospy.Time.now()
-      data_msg.data = force_diff
-      data_msg.f_n = np.sum(f_z)
-      data_msg.f_t = [np.sum(f_x), np.sum(f_y)]
-      data_msg.center_of_pressure = [0, 0]
-      self._pub_data.publish(data_msg)
-
+      self.update_sensor_data()
+      for sensor in self.sensors: # Loop over sensors and publish their data
+        sensor.publish()
       rospy.sleep(.001)
+
 
 if __name__ == '__main__':
   # defect_sensor = [[int(x.strip(' ')) for x in ss.lstrip(' [,').split(', ')] for ss in ignore_sensor.rstrip(']').split(']')]

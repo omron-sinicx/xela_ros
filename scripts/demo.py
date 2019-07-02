@@ -20,8 +20,8 @@ class XelaSensorClient(object):
   def __init__(self):
     self._base = [0] * taxel_num * 3
     self._data = [0] * taxel_num * 3
-    self._sub_data = rospy.Subscriber("data", XelaSensorStamped, self.data_callback)
-    self._sub_base = rospy.Subscriber("base", XelaSensorStamped, self.base_callback)
+    self._sub_data = rospy.Subscriber("data_topic", XelaSensorStamped, self.data_callback)
+    self._sub_base = rospy.Subscriber("base_topic", XelaSensorStamped, self.base_callback)
     self._pub = rospy.Publisher("sensor_xela", sensor, queue_size=10)
 
   def calibrate(self, sample_num, log_filename):
@@ -50,7 +50,6 @@ class XelaSensorClient(object):
 class XelaSensorDemo(XelaSensorClient):
   def __init__(self):
     super(XelaSensorDemo, self).__init__()
-
     # Run calibration and get baseline of the sensor (if necessary)
     data_dir = os.path.join(rospack.get_path("xela_ros"), "data")
     self.calibrate(sample_num=100, log_filename=os.path.join(data_dir, "calibration_log.csv"))
@@ -99,6 +98,7 @@ class XelaSensorDemo(XelaSensorClient):
           y = np.clip(      margin+j*pitch+dy[k], 0, height)
           z = np.clip(                  tz+dz[k], 0, 100)
           # Draw sensor circles
+          color = (255-int(z/100 * 255), 210, 255-int(z/100 * 255))
           cv2.circle(img, (int(x), int(y)), int(z), color, -1)
           #Control variable
           k = k+1
@@ -124,7 +124,7 @@ class XelaSensorDemo(XelaSensorClient):
       # Visualize center of pressure as a white circle
       cv2.circle(img, (int(center_of_pressure[0]), int(center_of_pressure[1])), 10, (255,255,255,255), -1)
       #Visualize total tangential force with an arrow
-      cv2.arrowedLine(img, (int(center_of_pressure[0]), int(center_of_pressure[1])), (int(f_t[0]+center_of_pressure[0]), int(f_t[1]+center_of_pressure[1])), (0,255,255,255), 15)
+      cv2.arrowedLine(img, (int(center_of_pressure[0]), int(center_of_pressure[1])), (int(f_t[0]+center_of_pressure[0]), int(f_t[1]+center_of_pressure[1])), (255,100,0,255), 15)
       # Display sensor image
       cv2.imshow("xela-sensor", img)
       # Publish sensor data
