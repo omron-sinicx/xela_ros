@@ -126,6 +126,8 @@ class XelaSensorDemo(XelaSensorClient):
       #Visualize total tangential force with an arrow
       cv2.arrowedLine(img, (int(center_of_pressure[0]), int(center_of_pressure[1])), (int(f_t[0]+center_of_pressure[0]), int(f_t[1]+center_of_pressure[1])), (255,100,0,255), 15)
       # Display sensor image
+      img = cv2.flip(img, 0)
+      img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
       cv2.imshow("xela-sensor", img)
       # Publish sensor data
       self._pub.publish(f_n, f_t, center_of_pressure)
@@ -137,6 +139,6 @@ class XelaSensorDemo(XelaSensorClient):
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-  rospy.init_node('xela_sensor_demo', anonymous=True, log_level=rospy.DEBUG)
+  rospy.init_node('xela_demo', anonymous=True, log_level=rospy.DEBUG)
   node = XelaSensorDemo()
   rospy.spin()

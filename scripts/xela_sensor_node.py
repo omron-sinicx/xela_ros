@@ -81,11 +81,31 @@ class SensorUnit(object):
     self.publish_reading(self.cntr_pub, cntr) 
 
 
-class XelaSensorNode(object):
+class XelaSensorArray(object):
+  """
+  This class is responsible for handling multiple sensors
+
+  An array of sensors are stored, and the data for each is published during the main loop.
+  As per the Xela Sensor documentation, up to 4 sensor controllers can be daisy chained,
+  meaning that this class can handle up to 8 sensors over 4 controllers.
+
+  This class handles data calibration, by starting an action service that can be requested.
+
+  Attributes:
+  board_id (int) = the board number for this array
+  _sensor (obj)  = the sensor object, handles direct interface with the CAN to retrieve sensor readings
+  sensors (list) = a list of all the SensorUnit objects handled by this array
+
+  _calibrate_action_name (str) = the name of the calibrate action server
+  _calibrate_action_server (obj) = the server itself
+  _calibrate_action_result (obj) = the result of the calibration
+
+  """
+
   def __init__(self):
     # Connect to the sensor and trigger to start acquisition
-    board_id = rospy.get_param("board_id", 1)
-    self._sensor = XelaSensor(board_id)
+    board_id = rospy.get_param("board_id", 1) # Might have to change when more controllers are added
+    self._sensor = XelaSensorInterface(board_id) # This too, might need an array of these
     self._sensor.start_data_acquisition()
     
     # Calibrate once
@@ -131,8 +151,8 @@ class XelaSensorNode(object):
 
 if __name__ == '__main__':
   # defect_sensor = [[int(x.strip(' ')) for x in ss.lstrip(' [,').split(', ')] for ss in ignore_sensor.rstrip(']').split(']')]
-  rospy.init_node('xela_robotics_sensor', anonymous=True, log_level=rospy.DEBUG)
-  node = XelaSensorNode()
+  rospy.init_node('xela_sensor', anonymous=True, log_level=rospy.DEBUG)
+  node = XelaSensorArray()
   # Read the input sensor number, which are defect and create a list
   if len(rospy.get_param("~defect_sensor", None)) > 0:
     sensor_list = map(int, rospy.get_param("~defect_sensor", None).split(","))

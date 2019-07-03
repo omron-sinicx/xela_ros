@@ -8,7 +8,22 @@ id_base     = 0x200
 taxel_num   = 16
 num_sensors = 2
 
-class XelaSensor:
+class XelaSensorInterface:
+  """
+  This class handles the direct communication with the Xela sensor controller (through CAN)
+
+  Data is retrieved through "get_data", and returned as a list of 3*16 (3 axes for each taxel).
+  Calibration is performed by averaging some readings from "get_data" to get the "base", which
+  is also saved to disk.
+
+  Attributes:
+    _board_id (int) = board id for this sensor controller
+    _bus (obj) = the can interface bus for interfacing with the sensor
+    _base (list) = the most recent base (calibration reading) for this sensor
+    _data (list) = the most recent data reading for this sensor
+
+  """
+
   def __init__(self, board_id=1):
     self._board_id = board_id # board id is start from 1
     self._bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=1000000)
@@ -50,24 +65,35 @@ class XelaSensor:
             # Update if data is available
             if id_list[i] != 0:
               # Combine MSB | LSB
-              self.data[i*3+0] = data_list[i][1] << 8 | data_list[i][2]
-              self.data[i*3+1] = data_list[i][3] << 8 | data_list[i][4]
-              self.data[i*3+2] = data_list[i][5] << 8 | data_list[i][6]
+              self._data[i*3+0] = data_list[i][1] << 8 | data_list[i][2]
+              self._data[i*3+1] = data_list[i][3] << 8 | data_list[i][4]
+              self._data[i*3+2] = data_list[i][5] << 8 | data_list[i][6]
               # Setting defect sensors to zero
               # if i == 4 or i == 7 or i == 9 or i == 10 or i == 15:
               if sensor_list:
                 for x in sensor_list:
                   if x == i:
-                    self.data[i*3+0] = 0
-                    self.data[i*3+1] = 0
-                    self.data[i*3+2] = 0
+                    self._data[i*3+0] = 0
+                    self._data[i*3+1] = 0
+                    self._data[i*3+2] = 0
           break
     except KeyboardInterrupt:
       return
 
-    return self.data
+    return self._data
 
   def calibrate(self, sample_num=100, filename="log.csv"):
+    """
+    This function calibrates the sensor, by taking sample_num number of readings using "get_data"
+
+    Data from these readings is averaged, saved to a file, and stored in the class attribute _base.
+    This can be used later to center the data readings to this calibration reading.
+
+    Args:
+      sample_num (int) = number of samples to average over when calibrating
+      filename (str) = the name for the file to save the calibration reading
+
+    """
     with open(filename, 'wb') as f:
       writer = csv.writer(f, delimiter=',')
       writer.writerow(['B1S1X','B1S1Y','B1S1Z','B1S2X','B1S2Y','B1S2Z','B1S3X','B1S3Y','B1S3Z','B1S4X','B1S4Y','B1S4Z',
