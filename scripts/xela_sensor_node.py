@@ -85,11 +85,12 @@ class XelaSensorArray(object):
   """
   This class is responsible for handling multiple sensors
 
-  An array of sensors are stored, and the data for each is published during the main loop.
+  An array of sensors is stored, and the data for each is published during the main loop.
   As per the Xela Sensor documentation, up to 4 sensor controllers can be daisy chained,
   meaning that this class can handle up to 8 sensors over 4 controllers.
 
   This class handles data calibration, by starting an action service that can be requested.
+  The calibration zeroes the sensor to the current value.
 
   Attributes:
   board_id (int) = the board number for this array
