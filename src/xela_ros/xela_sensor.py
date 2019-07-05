@@ -4,8 +4,11 @@ import can
 import csv
 import numpy as np
 
+# Base arbitration id for can interface
 id_base     = 0x200
+# Number of taxels (individual sensor nodes) on a sensor
 taxel_num   = 16
+# Number of sensors
 num_sensors = 2
 
 class XelaSensorInterface:
@@ -45,6 +48,7 @@ class XelaSensorInterface:
   def get_data(self, sensor_list=None):
     try:
       while True:
+        # Initialize empty data lists
         id_list   = [0] * taxel_num * num_sensors
         data_list = [0] * taxel_num * num_sensors
         success = False

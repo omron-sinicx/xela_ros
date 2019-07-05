@@ -94,8 +94,8 @@ class XelaSensorDemo(XelaSensorClient):
       for j in range(taxel_rows):
         for i in range(taxel_cols):
           # Convert output data to sensor coordinates
-          x = np.clip(width-margin-i*pitch-dx[k], 0, width)
-          y = np.clip(      margin+j*pitch+dy[k], 0, height)
+          x = np.clip(width -margin-i*pitch-dx[k], 0, width)
+          y = np.clip(height-margin-j*pitch-dy[k], 0, height)
           z = np.clip(                  tz+dz[k], 0, 100)
           # Draw sensor circles
           color = (255-int(z/100 * 255), 210, 255-int(z/100 * 255))
@@ -126,8 +126,6 @@ class XelaSensorDemo(XelaSensorClient):
       #Visualize total tangential force with an arrow
       cv2.arrowedLine(img, (int(center_of_pressure[0]), int(center_of_pressure[1])), (int(f_t[0]+center_of_pressure[0]), int(f_t[1]+center_of_pressure[1])), (255,100,0,255), 15)
       # Display sensor image
-      img = cv2.flip(img, 0)
-      img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
       cv2.imshow("xela-sensor", img)
       # Publish sensor data
       self._pub.publish(f_n, f_t, center_of_pressure)
