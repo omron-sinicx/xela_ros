@@ -4,18 +4,28 @@
   <arg name="sensor_node" value="xela_sensor_$(arg board_id)"/>
 
   <!-- sensor node -->
-  <include file="$(find o2as_xela_sensor)/launch/sensor.launch">
+  <include file="$(find xela_ros)/launch/sensor.launch">
     <arg name="board_id" value="$(arg board_id)"/>
     <arg name="node_name" value="$(arg sensor_node)"/>
     <!-- <arg name="frequency" value="$(arg sensor_node)"/> -->
   </include>
 
-  <!-- demo node -->
-  <node name="xela_sensor_demo" pkg="o2as_xela_sensor" type="demo.py" output="screen">
-    <remap from="data" to="$(arg sensor_node)/data"/>
-    <remap from="base" to="$(arg sensor_node)/base"/>
+  <!-- demo node for sensor 1-->
+  <node name="xela_sensor_demo_1" pkg="xela_ros" type="demo.py" output="screen">
+    <remap from="data_topic" to="$(arg sensor_node)/data_0"/>
+    <remap from="base_topic" to="$(arg sensor_node)/base_0"/>
     <remap from="calibrate" to="$(arg sensor_node)/calibrate"/>
     <remap from="get_baseline" to="$(arg sensor_node)/get_baseline"/>
   </node>
+
+  <!-- demo node for sensor 2-->
+  <node name="xela_sensor_demo_2" pkg="xela_ros" type="demo.py" output="screen">
+    <remap from="data_topic" to="$(arg sensor_node)/data_1"/>
+    <remap from="base_topic" to="$(arg sensor_node)/base_1"/>
+    <remap from="calibrate" to="$(arg sensor_node)/calibrate"/>
+    <remap from="get_baseline" to="$(arg sensor_node)/get_baseline"/>
+  </node>
+
+
 
 </launch>
