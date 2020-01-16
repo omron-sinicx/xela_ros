@@ -27,8 +27,13 @@ The "calibrate" action is available to re-zero the sensor.
 
     ```
     roslaunch xela_ros demo.launch
-
-    roslaunch xela_ros sensor.launch:
-    In order to start the XELA sensor without visualization and set sensor values to zero, sensor.launch needs to be executed as in the example below.
-    Example: roslaunch xela_ros sensor.launch"
     ```
+
+In order to start the XELA sensor without visualization and set sensor values to zero, sensor.launch needs to be executed like this:
+    ```
+    roslaunch xela_ros sensor.launch
+    ```
+
+# Multiple sensors
+
+The code assumes that two sensors are connected to one sensor controller. To use a single sensor, change the number of sensors [here](https://github.com/omron-sinicx/xela_ros/blob/master/src/xela_ros/xela_sensor.py#L12). To use more daisy-chained sensors and controllers, you will need to extend the code slightly [here](https://github.com/omron-sinicx/xela_ros/blob/master/scripts/xela_sensor_node.py#L106). Pull requests are welcome.
